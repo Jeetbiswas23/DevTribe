@@ -1,120 +1,53 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { hackathonAPI } from '../../api'
+
+
 
 export default function Hackathons() {
   const navigate = useNavigate()
-  const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+  const { user } = JSON.parse(localStorage.getItem('user') || '{}') // Or better useAuth if available in this context
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCategory, setFilterCategory] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterDifficulty, setFilterDifficulty] = useState('all')
-  const [sortBy, setSortBy] = useState('popular') // popular, prize, recent, ending
+  const [sortBy, setSortBy] = useState('popular')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [hackathonToDelete, setHackathonToDelete] = useState(null)
+  const [hackathons, setHackathons] = useState([])
+  const [loading, setLoading] = useState(false)
 
-  // Load hackathons from localStorage
-  const [hackathons, setHackathons] = useState([
-    {
-      id: 1,
-      name: "AI Innovation Challenge 2025",
-      tagline: "Build the future with AI",
-      coverImage: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800",
-      category: "AI",
-      mode: "Online",
-      startDate: "2025-12-01",
-      endDate: "2025-12-15",
-      prizePool: "$50,000",
-      participants: 1240,
-      teams: 310,
-      status: "Open",
-      difficulty: "Medium",
-      host: "Tech Corp",
-      rounds: 4,
-      featured: true,
-      trending: true
-    },
-    {
-      id: 2,
-      name: "Web3 Builder Fest",
-      tagline: "Decentralize everything",
-      coverImage: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800",
-      category: "Blockchain",
-      mode: "Hybrid",
-      startDate: "2025-11-25",
-      endDate: "2025-12-10",
-      prizePool: "$75,000",
-      participants: 890,
-      teams: 223,
-      status: "Open",
-      difficulty: "Hard",
-      host: "Blockchain Foundation",
-      rounds: 5,
-      featured: true
-    },
-    {
-      id: 3,
-      name: "Mobile App Marathon",
-      tagline: "Create apps that matter",
-      coverImage: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800",
-      category: "Mobile",
-      mode: "Online",
-      startDate: "2025-12-05",
-      endDate: "2025-12-20",
-      prizePool: "$30,000",
-      participants: 650,
-      teams: 163,
-      status: "Upcoming",
-      difficulty: "Easy",
-      host: "Mobile Innovations",
-      rounds: 3,
-      trending: true
-    },
-    {
-      id: 4,
-      name: "Game Dev Jam 2025",
-      tagline: "Create immersive experiences",
-      coverImage: "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800",
-      category: "Game Dev",
-      mode: "Online",
-      startDate: "2025-11-22",
-      endDate: "2025-12-05",
-      prizePool: "$20,000",
-      participants: 420,
-      teams: 84,
-      status: "Ongoing",
-      difficulty: "Medium",
-      host: "GameDev Studios",
-      rounds: 3
-    }
-  ])
-
-  // Load hackathons from localStorage on mount
   useEffect(() => {
-    const savedHackathons = JSON.parse(localStorage.getItem('hackathons') || '[]')
-    if (savedHackathons.length > 0) {
-      // Merge and remove duplicates based on ID
-      setHackathons(prev => {
-        const combined = [...savedHackathons, ...prev]
-        // Remove duplicates by ID
-        const uniqueHackathons = combined.filter((hackathon, index, self) =>
-          index === self.findIndex((h) => h.id === hackathon.id)
-        )
-        return uniqueHackathons
-      })
-    }
-  }, [])
+    fetchHackathons()
+  }, [filterCategory, filterStatus, searchQuery])
 
-  const handleDeleteHackathon = (hackathonId) => {
-    // Remove from state
-    setHackathons(prev => prev.filter(h => h.id !== hackathonId))
-    
-    // Remove from localStorage
-    const savedHackathons = JSON.parse(localStorage.getItem('hackathons') || '[]')
-    const updatedHackathons = savedHackathons.filter(h => h.id !== hackathonId)
-    localStorage.setItem('hackathons', JSON.stringify(updatedHackathons))
-    
-    setShowDeleteModal(false)
-    setHackathonToDelete(null)
+  const fetchHackathons = async () => {
+    try {
+      setLoading(true)
+      const params = {}
+      if (filterCategory !== 'all') params.category = filterCategory
+      if (filterStatus !== 'all') params.status = filterStatus
+      if (searchQuery) params.search = searchQuery
+
+      const response = await hackathonAPI.getAll(params)
+      setHackathons(response.data.hackathons)
+    } catch (error) {
+      console.error("Failed to fetch hackathons:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteHackathon = async (hackathonId) => {
+    try {
+      await hackathonAPI.delete(hackathonId)
+      setHackathons(prev => prev.filter(h => h._id !== hackathonId))
+      setShowDeleteModal(false)
+      setHackathonToDelete(null)
+    } catch (error) {
+      console.error("Failed to delete hackathon:", error)
+      alert("Failed to delete hackathon. Please try again.")
+    }
   }
 
   const handleEditHackathon = (hackathonId) => {
@@ -125,22 +58,21 @@ export default function Hackathons() {
   const statuses = ['All', 'Open', 'Upcoming', 'Ongoing']
   const difficulties = ['All', 'Easy', 'Medium', 'Hard']
 
+  // Client-side sorting/filtering for now to ensure reactive UI
   const filteredHackathons = hackathons.filter(hack => {
     const matchesSearch = hack.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         hack.tagline.toLowerCase().includes(searchQuery.toLowerCase())
+      hack.tagline?.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory = filterCategory === 'all' || hack.category === filterCategory
     const matchesStatus = filterStatus === 'all' || hack.status === filterStatus
     const matchesDifficulty = filterDifficulty === 'all' || hack.difficulty === filterDifficulty
     return matchesSearch && matchesCategory && matchesStatus && matchesDifficulty
   }).sort((a, b) => {
-    if (sortBy === 'popular') return b.participants - a.participants
-    if (sortBy === 'prize') return parseInt(b.prizePool.replace(/\D/g, '')) - parseInt(a.prizePool.replace(/\D/g, ''))
+    if (sortBy === 'popular') return (b.participants?.length || 0) - (a.participants?.length || 0)
+    // Prize parsing might need adjustment based on format, simple string compare for now or 0
     if (sortBy === 'recent') return new Date(b.startDate) - new Date(a.startDate)
     if (sortBy === 'ending') return new Date(a.endDate) - new Date(b.endDate)
     return 0
   })
-
-  const featuredHackathons = hackathons.filter(h => h.featured)
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -266,9 +198,9 @@ export default function Hackathons() {
         {/* Hackathons Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredHackathons.map((hackathon) => (
-            <HackathonCard 
-              key={hackathon.id} 
-              hackathon={hackathon} 
+            <HackathonCard
+              key={hackathon.id}
+              hackathon={hackathon}
               navigate={navigate}
               currentUser={currentUser}
             />
@@ -350,12 +282,12 @@ function HackathonCard({ hackathon, navigate, currentUser }) {
   }
 
   const isCreator = hackathon.createdBy === currentUser.username
-  
+
   // Fallback image if no cover image
   const displayImage = hackathon.coverImage || 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800'
 
   return (
-    <div 
+    <div
       onClick={(e) => {
         e.preventDefault()
         navigate(`/dashboard/hackathons/${hackathon.id}`)
@@ -373,7 +305,7 @@ function HackathonCard({ hackathon, navigate, currentUser }) {
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-neutral-900/40 to-transparent" />
-        
+
         {/* Status Badge */}
         <div className={`absolute top-3 right-3 px-2.5 py-1 rounded-lg text-xs font-medium border ${statusColors[hackathon.status]}`}>
           {hackathon.status}

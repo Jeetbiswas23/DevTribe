@@ -52,7 +52,7 @@ router.post('/', auth, async (req, res) => {
 router.get('/', auth, async (req, res) => {
   try {
     const { hackathon, search } = req.query
-    
+
     let query = {}
     if (hackathon) {
       query.hackathonName = hackathon
@@ -217,6 +217,38 @@ router.post('/:id/requests/:userId/:action', auth, async (req, res) => {
   } catch (error) {
     console.error('Handle request error:', error)
     res.status(500).json({ error: 'Failed to handle request' })
+  }
+})
+
+// Update team
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const { name, description, hackathonName, requiredMembers, tech, requiredSkills } = req.body
+    const team = await Team.findById(req.params.id)
+
+    if (!team) {
+      return res.status(404).json({ error: 'Team not found' })
+    }
+
+    // Check if current user is leader
+    if (team.leader.toString() !== req.userId) {
+      return res.status(403).json({ error: 'Only team leader can update the team' })
+    }
+
+    // Update fields
+    if (name) team.name = name
+    if (description) team.description = description
+    if (hackathonName) team.hackathonName = hackathonName
+    if (requiredMembers) team.requiredMembers = requiredMembers
+    if (tech) team.tech = tech
+    if (requiredSkills) team.requiredSkills = requiredSkills
+
+    await team.save()
+
+    res.json({ team, message: 'Team updated successfully' })
+  } catch (error) {
+    console.error('Update team error:', error)
+    res.status(500).json({ error: 'Failed to update team' })
   }
 })
 

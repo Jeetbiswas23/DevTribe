@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { useParams, useNavigate, useLocation } from "react-router-dom"
+import { userAPI } from "../api"
 
 export default function UserProfile() {
   const { username } = useParams()
@@ -20,104 +21,59 @@ export default function UserProfile() {
   }
 
   useEffect(() => {
-    // Load user data based on username
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-    const allPosts = JSON.parse(localStorage.getItem('posts') || '[]')
-    const following = JSON.parse(localStorage.getItem('following') || '[]')
-    
-    // Check if viewing own profile
-    if (username === currentUser.username) {
-      navigate('/dashboard')
-      return
-    }
+    const fetchUserData = async () => {
+      try {
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
 
-    // Find user in following list or posts
-    let foundUser = following.find(u => u.username === `@${username}` || u.username === username)
-    
-    if (!foundUser) {
-      // Try to find from posts
-      const userPost = allPosts.find(p => p.username === `@${username}` || p.username === username)
-      if (userPost) {
-        foundUser = {
-          name: userPost.author,
-          username: userPost.username,
-          avatar: userPost.avatar,
-          role: userPost.role,
+        // Check if viewing own profile
+        if (username === currentUser.username.replace('@', '')) {
+          navigate('/dashboard/profile')
+          return
         }
+
+        const response = await userAPI.getByUsername(username)
+        const userData = response.data.user
+        setUserInfo(userData)
+
+        // Check if following
+        // The backend returns populated followers/following so we can check
+        const isFollowingUser = userData.followers.some(f => f._id === currentUser.id || f.username === currentUser.username)
+        setIsFollowing(isFollowingUser)
+
+        // Mock posts for now until we have a proper endpoint for user posts
+        setUserPosts([])
+      } catch (error) {
+        console.error("Failed to fetch user profile:", error)
+        // If not found, maybe redirect or show error
       }
     }
 
-    if (foundUser) {
-      setUserInfo({
-        ...foundUser,
-        bio: "Passionate developer building amazing products",
-        location: "San Francisco, CA",
-        website: "https://johndoe.dev",
-        dateOfBirth: "1995-06-15",
-        skills: ["React", "JavaScript", "Node.js"],
-        interests: ["Web3", "AI/ML", "DevOps"],
-        followers: Math.floor(Math.random() * 1000),
-        following: Math.floor(Math.random() * 500),
-        joinDate: "Joined recently",
-      })
-
-      // Check if following
-      setIsFollowing(following.some(u => u.username === foundUser.username))
-
-      // Get user's posts
-      const posts = allPosts.filter(p => p.username === foundUser.username)
-      setUserPosts(posts)
-
-      // Calculate mutual followers (mock for now)
-      setMutualFollowers([])
+    if (username) {
+      fetchUserData()
     }
   }, [username, navigate])
 
-  const handleFollow = () => {
-    const following = JSON.parse(localStorage.getItem('following') || '[]')
-    
-    if (isFollowing) {
-      // Unfollow
-      const updated = following.filter(u => u.username !== userInfo.username)
-      localStorage.setItem('following', JSON.stringify(updated))
-      setIsFollowing(false)
-    } else {
-      // Follow
-      following.push({
-        id: Date.now(),
-        name: userInfo.name,
-        username: userInfo.username,
-        avatar: userInfo.avatar,
-        role: userInfo.role,
-      })
-      localStorage.setItem('following', JSON.stringify(following))
-      setIsFollowing(true)
+  const handleFollow = async () => {
+    try {
+      if (isFollowing) {
+        await userAPI.unfollow(userInfo.username)
+        setIsFollowing(false)
+        setUserInfo(prev => ({ ...prev, followers: prev.followers - 1 }))
+      } else {
+        await userAPI.follow(userInfo.username)
+        setIsFollowing(true)
+        setUserInfo(prev => ({ ...prev, followers: prev.followers + 1 }))
+      }
+    } catch (error) {
+      console.error("Failed to update follow status:", error)
     }
   }
 
   const handleMessage = () => {
-    // Clean username (remove @ if present)
-    const cleanUsername = userInfo.username.startsWith('@') 
-      ? userInfo.username.substring(1) 
-      : userInfo.username
-
-    console.log('📨 UserProfile storing pending chat:', {
-      username: cleanUsername,
-      name: userInfo.name,
-      avatar: userInfo.avatar
+    // Navigate directly to dashboard chat with the user object
+    navigate('/dashboard/chat', {
+      state: { pendingChatUser: userInfo }
     })
-
-    // Store chat data in localStorage for Dashboard to pick up
-    const chatData = {
-      username: cleanUsername,
-      name: userInfo.name,
-      avatar: userInfo.avatar,
-      message: ""
-    }
-    localStorage.setItem('pendingChat', JSON.stringify(chatData))
-    
-    // Navigate directly to dashboard chat
-    navigate('/dashboard/chat')
   }
 
   if (!userInfo) {
@@ -175,7 +131,7 @@ export default function UserProfile() {
                 <h1 className="text-3xl font-bold text-white mb-1">{userInfo.name}</h1>
                 <p className="text-neutral-400 mb-2">{userInfo.username}</p>
                 <p className="text-neutral-300 mb-3">{userInfo.bio}</p>
-                
+
                 <div className="flex items-center gap-4 text-sm text-neutral-400 mb-3">
                   <span className="flex items-center gap-1">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -213,11 +169,10 @@ export default function UserProfile() {
               <div className="flex gap-2">
                 <button
                   onClick={handleFollow}
-                  className={`px-6 py-2 rounded-lg font-semibold transition ${
-                    isFollowing
-                      ? "bg-neutral-800 text-white hover:bg-neutral-700"
-                      : "bg-blue-500 text-white hover:bg-blue-600"
-                  }`}
+                  className={`px-6 py-2 rounded-lg font-semibold transition ${isFollowing
+                    ? "bg-neutral-800 text-white hover:bg-neutral-700"
+                    : "bg-blue-500 text-white hover:bg-blue-600"
+                    }`}
                 >
                   {isFollowing ? "Following" : "Follow"}
                 </button>
@@ -265,11 +220,10 @@ export default function UserProfile() {
               <div className="flex gap-6">
                 <button
                   onClick={() => setActiveTab("posts")}
-                  className={`pb-3 px-1 font-medium transition ${
-                    activeTab === "posts"
-                      ? "text-blue-400 border-b-2 border-blue-400"
-                      : "text-neutral-400 hover:text-white"
-                  }`}
+                  className={`pb-3 px-1 font-medium transition ${activeTab === "posts"
+                    ? "text-blue-400 border-b-2 border-blue-400"
+                    : "text-neutral-400 hover:text-white"
+                    }`}
                 >
                   Posts ({userPosts.length})
                 </button>

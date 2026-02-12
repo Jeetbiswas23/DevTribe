@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Navbar from '@/components/Navbar'
 
+import { hackathonAPI } from '../api'
+
 export default function HackathonDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -9,80 +11,25 @@ export default function HackathonDetails() {
   const [activeTab, setActiveTab] = useState('overview')
   const [showJoinModal, setShowJoinModal] = useState(false)
   const [joinType, setJoinType] = useState('solo') // solo or team
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Mock data - replace with API call
-    const mockHackathon = {
-      id: 1,
-      name: "AI Innovation Challenge 2025",
-      tagline: "Build the future with AI",
-      coverImage: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=1200",
-      description: "Join the most exciting AI hackathon of the year! Build innovative AI solutions that solve real-world problems. Whether you're a beginner or an expert, this is your chance to showcase your skills and win amazing prizes.",
-      category: "AI",
-      mode: "Online",
-      startDate: "2025-12-01",
-      endDate: "2025-12-15",
-      registrationDeadline: "2025-11-25",
-      prizePool: "$50,000",
-      participants: 1240,
-      teams: 310,
-      status: "Open",
-      difficulty: "Medium",
-      host: "Tech Corp",
-      hostLogo: "T",
-      minTeamSize: 1,
-      maxTeamSize: 4,
-      rules: "1. All code must be written during the hackathon\n2. Use of AI tools is allowed\n3. Projects must be open source\n4. Respect code of conduct",
-      prizes: [
-        { place: "1st", amount: "$25,000", description: "Grand Prize + Mentorship" },
-        { place: "2nd", amount: "$15,000", description: "Runner Up Prize" },
-        { place: "3rd", amount: "$10,000", description: "Third Place Prize" }
-      ],
-      rounds: [
-        {
-          id: 1,
-          type: "MCQ",
-          name: "Technical Screening",
-          description: "Test your AI fundamentals with 30 multiple choice questions",
-          startDate: "2025-12-01",
-          endDate: "2025-12-02",
-          status: "Upcoming"
-        },
-        {
-          id: 2,
-          type: "Coding",
-          name: "Coding Challenge",
-          description: "Solve 3 algorithmic problems related to AI/ML",
-          startDate: "2025-12-03",
-          endDate: "2025-12-05",
-          status: "Locked"
-        },
-        {
-          id: 3,
-          type: "Project",
-          name: "Final Project",
-          description: "Build and deploy your AI solution",
-          startDate: "2025-12-06",
-          endDate: "2025-12-14",
-          status: "Locked"
-        }
-      ],
-      schedule: [
-        { date: "Dec 1", event: "Registration Opens" },
-        { date: "Dec 1-2", event: "MCQ Round" },
-        { date: "Dec 3-5", event: "Coding Challenge" },
-        { date: "Dec 6-14", event: "Project Building Phase" },
-        { date: "Dec 15", event: "Results & Awards" }
-      ],
-      contactEmail: "hello@techcorp.com",
-      discordLink: "https://discord.gg/techcorp",
-      judges: [
-        { name: "Dr. Sarah Chen", role: "AI Research Lead at Google", avatar: "S" },
-        { name: "Mark Johnson", role: "CTO at OpenAI", avatar: "M" },
-        { name: "Lisa Kumar", role: "VP Engineering at Microsoft", avatar: "L" }
-      ]
+    const fetchHackathonDetails = async () => {
+      try {
+        setLoading(true)
+        const response = await hackathonAPI.getById(id)
+        setHackathon(response.data.hackathon)
+      } catch (error) {
+        console.error("Failed to fetch hackathon details:", error)
+        // navigate('/dashboard/hackathons') // Optional: redirect on error
+      } finally {
+        setLoading(false)
+      }
     }
-    setHackathon(mockHackathon)
+
+    if (id) {
+      fetchHackathonDetails()
+    }
   }, [id])
 
   const handleJoin = (type) => {
@@ -131,13 +78,12 @@ export default function HackathonDetails() {
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/70 to-transparent" />
-          
+
           {/* Status Badge */}
-          <div className={`absolute top-24 right-6 px-4 py-2 rounded-full text-sm font-semibold border backdrop-blur-md ${
-            hackathon.status === 'Open' ? 'bg-green-500/20 text-green-300 border-green-500/40' :
+          <div className={`absolute top-24 right-6 px-4 py-2 rounded-full text-sm font-semibold border backdrop-blur-md ${hackathon.status === 'Open' ? 'bg-green-500/20 text-green-300 border-green-500/40' :
             hackathon.status === 'Upcoming' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' :
-            'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
-          }`}>
+              'bg-yellow-500/20 text-yellow-300 border-yellow-500/40'
+            }`}>
             {hackathon.status}
           </div>
 
@@ -154,7 +100,7 @@ export default function HackathonDetails() {
               </div>
               <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">{hackathon.name}</h1>
               <p className="text-xl text-slate-300 mb-6">{hackathon.tagline}</p>
-              
+
               {/* Quick Stats */}
               <div className="flex flex-wrap gap-6 text-sm">
                 <div className="flex items-center gap-2 text-slate-300">
@@ -167,7 +113,7 @@ export default function HackathonDetails() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
-                  <span>{hackathon.participants} participants</span>
+                  <span>{hackathon.participants?.length || 0} participants</span>
                 </div>
                 <div className="flex items-center gap-2 text-green-400 font-semibold">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,11 +137,10 @@ export default function HackathonDetails() {
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-6 py-3 rounded-xl font-medium capitalize transition-all ${
-                      activeTab === tab
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                        : 'bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700/50'
-                    }`}
+                    className={`px-6 py-3 rounded-xl font-medium capitalize transition-all ${activeTab === tab
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                      : 'bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700/50'
+                      }`}
                   >
                     {tab}
                   </button>
@@ -207,7 +152,7 @@ export default function HackathonDetails() {
                 <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-8">
                   <h2 className="text-2xl font-bold text-white mb-4">About This Hackathon</h2>
                   <p className="text-slate-300 leading-relaxed whitespace-pre-line">{hackathon.description}</p>
-                  
+
                   <div className="mt-8 grid grid-cols-2 gap-4">
                     <div className="bg-slate-800/30 rounded-xl p-4">
                       <div className="text-slate-400 text-sm mb-1">Team Size</div>
@@ -242,11 +187,10 @@ export default function HackathonDetails() {
                           </div>
                           <p className="text-slate-400">{round.description}</p>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          round.status === 'Upcoming' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${round.status === 'Upcoming' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
                           round.status === 'Locked' ? 'bg-slate-500/20 text-slate-400 border border-slate-500/30' :
-                          'bg-green-500/20 text-green-300 border border-green-500/30'
-                        }`}>
+                            'bg-green-500/20 text-green-300 border border-green-500/30'
+                          }`}>
                           {round.status}
                         </span>
                       </div>
@@ -288,11 +232,10 @@ export default function HackathonDetails() {
               {activeTab === 'prizes' && (
                 <div className="space-y-4">
                   {hackathon.prizes.map((prize, index) => (
-                    <div key={index} className={`bg-gradient-to-r ${
-                      index === 0 ? 'from-yellow-500/10 to-yellow-600/10 border-yellow-500/30' :
+                    <div key={index} className={`bg-gradient-to-r ${index === 0 ? 'from-yellow-500/10 to-yellow-600/10 border-yellow-500/30' :
                       index === 1 ? 'from-slate-500/10 to-slate-600/10 border-slate-500/30' :
-                      'from-orange-500/10 to-orange-600/10 border-orange-500/30'
-                    } border backdrop-blur-sm rounded-2xl p-8`}>
+                        'from-orange-500/10 to-orange-600/10 border-orange-500/30'
+                      } border backdrop-blur-sm rounded-2xl p-8`}>
                       <div className="flex items-center justify-between">
                         <div>
                           <div className="text-3xl mb-2">{index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}</div>
@@ -300,11 +243,10 @@ export default function HackathonDetails() {
                           <p className="text-slate-400">{prize.description}</p>
                         </div>
                         <div className="text-right">
-                          <div className={`text-4xl font-bold ${
-                            index === 0 ? 'text-yellow-400' :
+                          <div className={`text-4xl font-bold ${index === 0 ? 'text-yellow-400' :
                             index === 1 ? 'text-slate-300' :
-                            'text-orange-400'
-                          }`}>
+                              'text-orange-400'
+                            }`}>
                             {prize.amount}
                           </div>
                         </div>
@@ -407,7 +349,7 @@ export default function HackathonDetails() {
               Join {joinType === 'solo' ? 'Solo' : 'with Team'}
             </h3>
             <p className="text-slate-400 mb-6">
-              {joinType === 'solo' 
+              {joinType === 'solo'
                 ? "You'll participate individually in this hackathon. You can still collaborate with others during the project phase."
                 : "You'll need to create or join a team. Team invites will be available in your dashboard."}
             </p>

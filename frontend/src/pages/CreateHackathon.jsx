@@ -109,7 +109,7 @@ const CreateHackathon = () => {
       const response = await hackathonAPI.create(cleanedData)
 
       alert('Hackathon created successfully!')
-      navigate(`/hackathons/${response.data._id}`)
+      navigate(`/dashboard/hackathons/${response.data.hackathon._id}`)
     } catch (error) {
       console.error('Error creating hackathon:', error)
       alert(error.response?.data?.error || 'Failed to create hackathon')

@@ -1,6 +1,7 @@
 import express from 'express'
 import { auth } from '../middleware/auth.js'
 import User from '../models/User.js'
+import mongoose from 'mongoose'
 
 const router = express.Router()
 
@@ -111,7 +112,13 @@ router.get('/:username', auth, async (req, res) => {
 router.put('/profile', auth, async (req, res) => {
   try {
     const updates = req.body
-    const allowedUpdates = ['name', 'bio', 'location', 'website', 'github', 'linkedin', 'twitter', 'skills', 'interests', 'avatar']
+    const allowedUpdates = [
+      'name', 'bio', 'location', 'website', 'github', 'linkedin', 'twitter',
+      'skills', 'interests', 'avatar',
+      // Professional fields
+      'experience', 'company', 'position', 'yearsOfExperience', 'expertise',
+      'certifications', 'phone'
+    ]
 
     const updateKeys = Object.keys(updates)
     const isValidUpdate = updateKeys.every(key => allowedUpdates.includes(key))

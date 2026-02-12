@@ -78,6 +78,7 @@ export const teamAPI = {
   apply: (id, data) => api.post(`/teams/${id}/apply`, data),
   handleRequest: (teamId, userId, action) => api.post(`/teams/${teamId}/requests/${userId}/${action}`),
   removeMember: (teamId, userId) => api.delete(`/teams/${teamId}/members/${userId}`),
+  update: (id, data) => api.put(`/teams/${id}`, data),
   delete: (id) => api.delete(`/teams/${id}`)
 }
 
