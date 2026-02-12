@@ -12,6 +12,8 @@ export default function MCQRound() {
   const [showResults, setShowResults] = useState(false)
   const [score, setScore] = useState(0)
 
+  
+
   useEffect(() => {
     // Load round data
     const mockRound = {

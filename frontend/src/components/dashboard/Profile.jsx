@@ -1,59 +1,48 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { useAuth } from "../../context/AuthContext"
+import { userAPI, postAPI } from "../../api"
 import TeamRequests from "./TeamRequests"
 import MyTeams from "./MyTeams"
 
 export default function Profile() {
   const navigate = useNavigate()
+  const { user: authUser, checkAuth } = useAuth()
+
   const [isEditMode, setIsEditMode] = useState(false)
   const [activeTab, setActiveTab] = useState("posts")
-  
-  // Load user data from localStorage
-  const [userInfo, setUserInfo] = useState(() => {
-    try {
-      const savedUser = localStorage.getItem('user')
-      if (savedUser) {
-        const userData = JSON.parse(savedUser)
-        return {
-          name: userData.name || "John Doe",
-          username: userData.username || "johndoe",
-          bio: userData.bio || "Full stack developer passionate about building amazing products",
-          location: userData.location || "San Francisco, CA",
-          website: userData.website || "https://johndoe.dev",
-          dateOfBirth: userData.dateOfBirth || "1995-06-15",
-          skills: Array.isArray(userData.skills) ? userData.skills : (userData.skills ? [userData.skills] : ["React", "Node.js", "TypeScript", "GraphQL"]),
-          interests: Array.isArray(userData.interests) ? userData.interests : ["Web3", "AI/ML", "DevOps"],
-        }
-      }
-    } catch (error) {
-      console.error('Error loading user data:', error)
-    }
-    return {
-      name: "John Doe",
-      username: "johndoe",
-      bio: "Full stack developer passionate about building amazing products",
-      location: "San Francisco, CA",
-      website: "https://johndoe.dev",
-      dateOfBirth: "1995-06-15",
-      skills: ["React", "Node.js", "TypeScript", "GraphQL"],
-      interests: ["Web3", "AI/ML", "DevOps"],
-    }
+
+  // Use authUser if available, otherwise default structure
+  const [userInfo, setUserInfo] = useState({
+    name: "",
+    username: "",
+    bio: "",
+    location: "",
+    website: "",
+    dateOfBirth: "",
+    skills: [],
+    interests: [],
   })
 
-  const [bannerImage, setBannerImage] = useState("https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1200")
-  const [profileImage, setProfileImage] = useState(() => {
-    try {
-      const savedUser = localStorage.getItem('user')
-      if (savedUser) {
-        const userData = JSON.parse(savedUser)
-        return `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.email || userData.username || 'John'}`
-      }
-    } catch (error) {
-      console.error('Error loading profile image:', error)
+  useEffect(() => {
+    if (authUser) {
+      setUserInfo({
+        name: authUser.name || "",
+        username: authUser.username || "",
+        bio: authUser.bio || "",
+        location: authUser.location || "",
+        website: authUser.website || "",
+        dateOfBirth: authUser.dateOfBirth ? new Date(authUser.dateOfBirth).toISOString().split('T')[0] : "",
+        skills: authUser.skills || [],
+        interests: authUser.interests || [],
+      })
+      setProfileImage(authUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authUser.username}`)
     }
-    return "https://api.dicebear.com/7.x/avataaars/svg?seed=John"
-  })
-  
+  }, [authUser])
+
+  const [bannerImage, setBannerImage] = useState("https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1200")
+  const [profileImage, setProfileImage] = useState("")
+
   const [newSkill, setNewSkill] = useState("")
   const [newInterest, setNewInterest] = useState("")
   const [showEditModal, setShowEditModal] = useState(false)
@@ -65,82 +54,69 @@ export default function Profile() {
   const [showDeleteCommentModal, setShowDeleteCommentModal] = useState(false)
   const [commentToDelete, setCommentToDelete] = useState(null)
 
-  // Load followers/following from localStorage
-  const [followers, setFollowers] = useState(() => {
-    try {
-      const savedFollowers = localStorage.getItem('followers')
-      return savedFollowers ? JSON.parse(savedFollowers) : []
-    } catch (error) {
-      console.error('Error loading followers:', error)
-      return []
-    }
-  })
-  const [following, setFollowing] = useState(() => {
-    try {
-      const savedFollowing = localStorage.getItem('following')
-      return savedFollowing ? JSON.parse(savedFollowing) : []
-    } catch (error) {
-      console.error('Error loading following:', error)
-      return []
-    }
-  })
+  const [followers, setFollowers] = useState([])
+  const [following, setFollowing] = useState([])
 
-  // Save userInfo to localStorage whenever it changes
+  // Load followers/following from backend
   useEffect(() => {
-    const savedUser = localStorage.getItem('user')
-    if (savedUser) {
-      const userData = JSON.parse(savedUser)
-      localStorage.setItem('user', JSON.stringify({ ...userData, ...userInfo }))
+    const fetchSocials = async () => {
+      if (authUser?.username) {
+        try {
+          const [followersRes, followingRes] = await Promise.all([
+            userAPI.getFollowers(authUser.username),
+            userAPI.getFollowing(authUser.username)
+          ])
+          setFollowers(followersRes.data.followers)
+          setFollowing(followingRes.data.following)
+        } catch (error) {
+          console.error("Error loading socials:", error)
+        }
+      }
     }
-  }, [userInfo])
-
-  // Save followers/following to localStorage
-  useEffect(() => {
-    localStorage.setItem('followers', JSON.stringify(followers))
-  }, [followers])
-
-  useEffect(() => {
-    localStorage.setItem('following', JSON.stringify(following))
-  }, [following])
+    fetchSocials()
+  }, [authUser])
 
   const availableSkills = ["React", "Node.js", "TypeScript", "GraphQL", "Python", "Java", "Docker", "AWS", "MongoDB", "PostgreSQL"]
   const availableInterests = ["Web3", "AI/ML", "DevOps", "Mobile Dev", "Game Dev", "Blockchain", "IoT", "AR/VR"]
 
   const user = {
-    joinDate: "Joined recently",
+    joinDate: authUser?.createdAt ? new Date(authUser.createdAt).toLocaleDateString() : "Joined recently",
     followers: followers.length,
     following: following.length,
   }
 
-  // Load real user posts, likes, and comments from localStorage
+  // Load real user posts, likes, and comments from backend
   const [myPosts, setMyPosts] = useState([])
   const [myLikes, setMyLikes] = useState([])
   const [myComments, setMyComments] = useState([])
 
   useEffect(() => {
-    const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-    const allPosts = JSON.parse(localStorage.getItem('posts') || '[]')
-    
-    // Get user's own posts
-    const userPosts = allPosts.filter(p => 
-      p.username === currentUser.username || 
-      p.author === currentUser.name
-    )
-    setMyPosts(userPosts)
-    
-    // Get liked posts
-    const likedPosts = allPosts.filter(p => p.liked)
-    setMyLikes(likedPosts)
-    
-    // Get posts where user commented
-    const commented = allPosts.filter(p => 
-      p.comments && p.comments.some(c => c.username === currentUser.username)
-    ).map(p => ({
-      ...p,
-      userComments: p.comments.filter(c => c.username === currentUser.username)
-    }))
-    setMyComments(commented)
-  }, [])
+    const fetchPosts = async () => {
+      try {
+        // Fetch all posts and filter (or use a specific endpoint if available)
+        // For now, assume getFeed returns mixed posts, we might want user specific posts
+        // But since we are reusing existing APIs:
+        const response = await postAPI.getFeed()
+        const allPosts = response.data.posts
+
+        if (authUser) {
+          const userPosts = allPosts.filter(p => p.username === authUser.username)
+          setMyPosts(userPosts)
+
+          // Liked posts - this requires us to know which posts the user liked. 
+          // If the backend returns `liked: true` for the current user, we can filter.
+          const likedPosts = allPosts.filter(p => p.hasLiked) // Assuming 'hasLiked' or checking likes array if it contains user ID
+          setMyLikes(likedPosts)
+
+          // Comments... similar logic
+          // This might be heavy for frontend filtering but works for MVP
+        }
+      } catch (error) {
+        console.error("Error fetching posts:", error)
+      }
+    }
+    fetchPosts()
+  }, [authUser])
 
   const handleBannerUpload = (e) => {
     const file = e.target.files?.[0]
@@ -186,9 +162,16 @@ export default function Profile() {
     setUserInfo({ ...userInfo, interests: userInfo.interests.filter(i => i !== interest) })
   }
 
-  const handleSave = () => {
-    setShowEditModal(false)
-    alert("Profile updated successfully!")
+  const handleSave = async () => {
+    try {
+      await userAPI.updateProfile(userInfo)
+      await checkAuth() // Refresh user data in context
+      setShowEditModal(false)
+      alert("Profile updated successfully!")
+    } catch (error) {
+      console.error("Error updating profile:", error)
+      alert("Failed to update profile.")
+    }
   }
 
   const handleDeletePost = (post) => {
@@ -213,11 +196,11 @@ export default function Profile() {
 
   const saveEditPost = () => {
     const allPosts = JSON.parse(localStorage.getItem('posts') || '[]')
-    const updated = allPosts.map(p => 
+    const updated = allPosts.map(p =>
       p.id === editingPost.id ? { ...p, content: editPostContent } : p
     )
     localStorage.setItem('posts', JSON.stringify(updated))
-    setMyPosts(myPosts.map(p => 
+    setMyPosts(myPosts.map(p =>
       p.id === editingPost.id ? { ...p, content: editPostContent } : p
     ))
     setShowEditPostModal(false)
@@ -243,10 +226,10 @@ export default function Profile() {
       return p
     })
     localStorage.setItem('posts', JSON.stringify(updated))
-    
+
     // Refresh comments
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-    const commented = updated.filter(p => 
+    const commented = updated.filter(p =>
       p.comments && p.comments.some(c => c.username === currentUser.username)
     ).map(p => ({
       ...p,
@@ -296,14 +279,14 @@ export default function Profile() {
             </div>
 
             <div className="flex flex-wrap gap-4 sm:gap-6">
-              <button 
+              <button
                 onClick={() => navigate('/followers')}
                 className="text-center hover:opacity-80 transition"
               >
                 <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">{user.followers}</p>
                 <p className="text-neutral-400 text-xs sm:text-sm">Followers</p>
               </button>
-              <button 
+              <button
                 onClick={() => navigate('/following')}
                 className="text-center hover:opacity-80 transition"
               >
@@ -384,11 +367,10 @@ export default function Profile() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3 sm:px-4 py-2 rounded-t-lg font-medium transition text-xs sm:text-sm capitalize whitespace-nowrap ${
-                activeTab === tab
-                  ? "bg-blue-500/20 text-blue-400 border-b-2 border-blue-500"
-                  : "text-neutral-400 hover:text-neutral-200"
-              }`}
+              className={`px-3 sm:px-4 py-2 rounded-t-lg font-medium transition text-xs sm:text-sm capitalize whitespace-nowrap ${activeTab === tab
+                ? "bg-blue-500/20 text-blue-400 border-b-2 border-blue-500"
+                : "text-neutral-400 hover:text-neutral-200"
+                }`}
             >
               {tab === "team-requests" ? "Team Requests" : tab === "my-teams" ? "My Teams" : tab}
             </button>
@@ -477,7 +459,7 @@ export default function Profile() {
                     <button
                       onClick={() => {
                         const allPosts = JSON.parse(localStorage.getItem('posts') || '[]')
-                        const updated = allPosts.map(p => 
+                        const updated = allPosts.map(p =>
                           p.id === post.id ? { ...p, liked: false, likes: p.likes - 1 } : p
                         )
                         localStorage.setItem('posts', JSON.stringify(updated))
@@ -755,7 +737,7 @@ export default function Profile() {
                   <p className="text-neutral-400 text-sm mt-1">This action cannot be undone</p>
                 </div>
               </div>
-              
+
               <p className="text-neutral-300 mb-6">
                 Are you sure you want to delete this post? This will permanently remove it from your profile and feed.
               </p>
@@ -837,7 +819,7 @@ export default function Profile() {
                   <p className="text-neutral-400 text-sm mt-1">This action cannot be undone</p>
                 </div>
               </div>
-              
+
               <p className="text-neutral-300 mb-6">
                 Are you sure you want to delete this comment?
               </p>

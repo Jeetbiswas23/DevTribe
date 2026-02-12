@@ -1,8 +1,10 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { useAuth } from "../context/AuthContext"
 
 export default function Navbar() {
   const navigate = useNavigate()
+  const { user, isAuthenticated, logout } = useAuth()
   const [showMobileMenu, setShowMobileMenu] = useState(false)
 
   return (
@@ -44,18 +46,38 @@ export default function Navbar() {
 
           {/* Desktop Buttons */}
           <div className="hidden sm:flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={() => navigate("/auth")}
-              className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 text-white hover:text-white text-xs sm:text-sm transition-colors font-light border border-white/20 rounded-full hover:border-white/40"
-            >
-              Login
-            </button>
-            <button
-              onClick={() => navigate("/auth")}
-              className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2.5 bg-white text-black rounded-full text-xs sm:text-sm font-light hover:bg-gray-100 transition-all duration-300"
-            >
-              Get Started
-            </button>
+            {isAuthenticated && user ? (
+              <div className="flex items-center gap-3">
+                <span className="text-white text-sm font-light">Hello, {user.name}</span>
+                <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20">
+                  <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                </div>
+                <button
+                  onClick={() => {
+                    logout()
+                    navigate('/auth')
+                  }}
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-white/60 hover:text-white text-xs sm:text-sm transition-colors font-light border border-white/20 rounded-full hover:border-white/40"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate("/auth")}
+                  className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2 text-white hover:text-white text-xs sm:text-sm transition-colors font-light border border-white/20 rounded-full hover:border-white/40"
+                >
+                  Login
+                </button>
+                <button
+                  onClick={() => navigate("/auth")}
+                  className="px-3 sm:px-4 md:px-6 py-1.5 sm:py-2.5 bg-white text-black rounded-full text-xs sm:text-sm font-light hover:bg-gray-100 transition-all duration-300"
+                >
+                  Get Started
+                </button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}

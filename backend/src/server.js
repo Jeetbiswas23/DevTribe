@@ -1,11 +1,28 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import http from 'http'
+import { initSocket } from './socket.js'
+import connectDB from './config/database.js'
+import authRoutes from './routes/auth.js'
+import userRoutes from './routes/users.js'
+import postRoutes from './routes/posts.js'
+import teamRoutes from './routes/teams.js'
+import hackathonRoutes from './routes/hackathons.js'
+import messageRoutes from './routes/messages.js'
+import notificationRoutes from './routes/notifications.js'
 
 dotenv.config()
 
+// Connect to database
+connectDB()
+
 const app = express()
+const server = http.createServer(app)
 const PORT = process.env.PORT || 5000
+
+// Initialize Socket.io
+initSocket(server)
 
 // Middleware
 app.use(cors())
@@ -17,7 +34,16 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'DevTribe API is running' })
 })
 
-// Routes
+// API Routes
+app.use('/api/auth', authRoutes)
+app.use('/api/users', userRoutes)
+app.use('/api/posts', postRoutes)
+app.use('/api/teams', teamRoutes)
+app.use('/api/hackathons', hackathonRoutes)
+app.use('/api/messages', messageRoutes)
+app.use('/api/notifications', notificationRoutes)
+
+// Root route
 app.get('/', (req, res) => {
   res.json({ message: 'Welcome to DevTribe API' })
 })
@@ -28,8 +54,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' })
 })
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`)
 })
 
 export default app
+

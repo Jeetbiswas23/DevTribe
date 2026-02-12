@@ -24,9 +24,16 @@ import MyHackathons from './components/dashboard/MyHackathons'
 import MCQRound from './components/dashboard/MCQRound'
 import CodingRound from './components/dashboard/CodingRound'
 
+import { useAuth } from './context/AuthContext'
+
 // Protected Route Component
 function ProtectedRoute({ children }) {
-  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true'
+  const { isAuthenticated, loading } = useAuth()
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen bg-black text-white">Loading...</div>
+  }
+
   return isAuthenticated ? children : <Navigate to="/auth" replace />
 }
 
@@ -35,7 +42,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/auth" element={<Auth />} />
-      
+
       {/* Dashboard with nested routes */}
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>}>
         <Route index element={<Navigate to="/dashboard/feed" replace />} />
@@ -50,16 +57,16 @@ function App() {
         <Route path="judge" element={<Judge />} />
         <Route path="hr" element={<HR />} />
       </Route>
-      
+
       {/* Hackathon Rounds - Standalone Pages (Not inside Dashboard) */}
       <Route path="/hackathons/:hackathonId/rounds/:roundId/mcq" element={<ProtectedRoute><MCQRound /></ProtectedRoute>} />
       <Route path="/hackathons/:hackathonId/rounds/:roundId/coding" element={<ProtectedRoute><CodingRound /></ProtectedRoute>} />
-      
+
       {/* Hackathon Routes */}
       <Route path="/hackathons" element={<Hackathons />} />
       <Route path="/hackathons/create" element={<ProtectedRoute><CreateHackathon /></ProtectedRoute>} />
       <Route path="/hackathons/:id" element={<HackathonDetails />} />
-      
+
       <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
       <Route path="/user/:username" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
       <Route path="/followers" element={<ProtectedRoute><FollowersList /></ProtectedRoute>} />

@@ -1,8 +1,11 @@
 import { useNavigate } from "react-router-dom"
+
 import { useState } from "react"
+import { useAuth } from "../context/AuthContext"
 
 export default function Auth() {
   const navigate = useNavigate()
+  const { login, register } = useAuth()
   const [isSignUp, setIsSignUp] = useState(false)
   const [loading, setLoading] = useState(false)
   const [selectedRole, setSelectedRole] = useState("user") // user, judge, hr
@@ -10,7 +13,7 @@ export default function Auth() {
   const [resumeFile, setResumeFile] = useState(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
-  
+
   const [formData, setFormData] = useState({
     name: "",
     username: "",
@@ -74,7 +77,7 @@ export default function Auth() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     // For login
     if (!isSignUp) {
       if (!formData.email || !formData.password) {
@@ -85,48 +88,29 @@ export default function Auth() {
       }
 
       setLoading(true)
-      setTimeout(() => {
-        // Get all registered users
-        const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]')
-        
-        // Find user by email
-        const existingUser = allUsers.find(user => user.email === formData.email)
-        
-        if (!existingUser) {
-          setLoading(false)
-          setSuccessMessage("❌ No account found with this email. Please sign up first.")
-          setShowSuccess(true)
-          setTimeout(() => setShowSuccess(false), 3000)
-          return
-        }
-        
-        // Check password
-        if (existingUser.password === formData.password) {
-          // Password matches - log them in
-          localStorage.setItem("user", JSON.stringify(existingUser))
-          localStorage.setItem("isAuthenticated", "true")
-          setLoading(false)
-          
-          setSuccessMessage(`Welcome back, ${existingUser.name}! 🎉`)
-          setShowSuccess(true)
-          
-          setTimeout(() => {
-            // Redirect based on their role
-            if (existingUser.userType === 'judge') {
-              navigate("/dashboard/judge")
-            } else if (existingUser.userType === 'hr') {
-              navigate("/dashboard/hr")
-            } else {
-              navigate("/dashboard/feed")
-            }
-          }, 1500)
-        } else {
-          setLoading(false)
-          setSuccessMessage("❌ Incorrect password. Please try again.")
-          setShowSuccess(true)
-          setTimeout(() => setShowSuccess(false), 3000)
-        }
-      }, 1000)
+
+      const result = await login(formData.email, formData.password)
+
+      if (result.success) {
+        setSuccessMessage(`Welcome back, ${result.user.name}! 🎉`)
+        setShowSuccess(true)
+
+        setTimeout(() => {
+          // Redirect based on their role
+          if (result.user.userType === 'judge') {
+            navigate("/dashboard/judge")
+          } else if (result.user.userType === 'hr') {
+            navigate("/dashboard/hr")
+          } else {
+            navigate("/dashboard/feed")
+          }
+        }, 1500)
+      } else {
+        setSuccessMessage(`❌ ${result.error}`)
+        setShowSuccess(true)
+        setTimeout(() => setShowSuccess(false), 3000)
+      }
+      setLoading(false)
       return
     }
 
@@ -153,64 +137,39 @@ export default function Auth() {
     }
 
     setLoading(true)
-    setTimeout(() => {
-      const userData = {
-        id: Date.now(), // Unique ID for each user
-        name: formData.name || formData.username || formData.email.split("@")[0],
-        username: formData.username || `@${formData.email.split("@")[0]}`,
-        email: formData.email,
-        password: formData.password, // Store password for login validation
-        role: selectedRole,
-        userType: selectedRole, // user, judge, hr
-        bio: formData.bio || (selectedRole === 'judge' ? "Experienced hackathon judge" : selectedRole === 'hr' ? "HR Professional" : "Passionate developer"),
-        skills: formData.skills ? formData.skills.split(",").map(s => s.trim()) : ["React", "JavaScript", "Node.js"],
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.email}`,
-        followers: 0,
-        following: 0,
-        posts: 0,
-        joinedDate: new Date().toISOString(),
-        // Professional details
-        ...(selectedRole === 'judge' || selectedRole === 'hr' ? {
-          experience: formData.experience,
-          company: formData.company,
-          position: formData.position,
-          linkedin: formData.linkedin,
-          yearsOfExperience: formData.yearsOfExperience,
-          expertise: formData.expertise,
-          certifications: formData.certifications,
-          phone: formData.phone,
-          resumeUploaded: true,
-          resumeFileName: resumeFile?.name,
-          verified: false, // Will be verified by admin
-        } : {}),
-      }
-      
-      // Save to allUsers array
-      const allUsers = JSON.parse(localStorage.getItem('allUsers') || '[]')
-      
-      // Check if email already exists
-      if (allUsers.some(user => user.email === userData.email)) {
-        setLoading(false)
-        setSuccessMessage("❌ Email already registered. Please sign in instead.")
-        setShowSuccess(true)
-        setTimeout(() => setShowSuccess(false), 3000)
-        return
-      }
-      
-      allUsers.push(userData)
-      localStorage.setItem('allUsers', JSON.stringify(allUsers))
-      
-      // Set current user
-      localStorage.setItem("user", JSON.stringify(userData))
-      localStorage.setItem("isAuthenticated", "true")
-      setLoading(false)
-      
-      // Show success message
-      setSuccessMessage(`🎉 Account created successfully! Welcome, ${userData.name}!`)
+
+    const userData = {
+      name: formData.name || formData.username || formData.email.split("@")[0],
+      username: formData.username || `@${formData.email.split("@")[0]}`,
+      email: formData.email,
+      password: formData.password,
+      role: selectedRole,
+      userType: selectedRole,
+      bio: formData.bio || (selectedRole === 'judge' ? "Experienced hackathon judge" : selectedRole === 'hr' ? "HR Professional" : "Passionate developer"),
+      skills: formData.skills ? formData.skills.split(",").map(s => s.trim()) : ["React", "JavaScript", "Node.js"],
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.email}`,
+      // Professional details
+      ...(selectedRole === 'judge' || selectedRole === 'hr' ? {
+        experience: formData.experience,
+        company: formData.company,
+        position: formData.position,
+        linkedin: formData.linkedin,
+        yearsOfExperience: formData.yearsOfExperience,
+        expertise: formData.expertise,
+        certifications: formData.certifications,
+        phone: formData.phone,
+        resumeUploaded: true,
+        resumeFileName: resumeFile?.name,
+      } : {}),
+    }
+
+    const result = await register(userData)
+
+    if (result.success) {
+      setSuccessMessage(`🎉 Account created successfully! Welcome, ${result.user.name}!`)
       setShowSuccess(true)
-      
+
       setTimeout(() => {
-        // Redirect based on role - all within dashboard
         if (selectedRole === 'judge') {
           navigate("/dashboard/judge")
         } else if (selectedRole === 'hr') {
@@ -219,7 +178,12 @@ export default function Auth() {
           navigate("/dashboard/feed")
         }
       }, 1500)
-    }, 1000)
+    } else {
+      setSuccessMessage(`❌ ${result.error}`)
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 3000)
+    }
+    setLoading(false)
   }
 
   return (
@@ -270,18 +234,16 @@ export default function Auth() {
                   {(selectedRole === 'judge' || selectedRole === 'hr') && (
                     <div className="flex items-center justify-center gap-2 mb-4">
                       <div className={`flex items-center gap-2 ${currentStep === 1 ? 'text-blue-400' : 'text-green-400'}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
-                          currentStep === 1 ? 'border-blue-400 bg-blue-400/20' : 'border-green-400 bg-green-400/20'
-                        }`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${currentStep === 1 ? 'border-blue-400 bg-blue-400/20' : 'border-green-400 bg-green-400/20'
+                          }`}>
                           {currentStep === 1 ? '1' : '✓'}
                         </div>
                         <span className="text-sm font-medium">Basic Info</span>
                       </div>
                       <div className="w-8 h-0.5 bg-slate-700"></div>
                       <div className={`flex items-center gap-2 ${currentStep === 2 ? 'text-blue-400' : 'text-slate-500'}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
-                          currentStep === 2 ? 'border-blue-400 bg-blue-400/20' : 'border-slate-700'
-                        }`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${currentStep === 2 ? 'border-blue-400 bg-blue-400/20' : 'border-slate-700'
+                          }`}>
                           2
                         </div>
                         <span className="text-sm font-medium">Professional</span>
@@ -299,39 +261,36 @@ export default function Auth() {
                           <button
                             type="button"
                             onClick={() => handleRoleSelect('user')}
-                            className={`p-4 rounded-lg border-2 transition-all ${
-                              selectedRole === 'user'
-                                ? 'border-pink-500 bg-pink-500/10'
-                                : 'border-slate-700/50 bg-slate-900/30 hover:border-slate-600'
-                            }`}
+                            className={`p-4 rounded-lg border-2 transition-all ${selectedRole === 'user'
+                              ? 'border-pink-500 bg-pink-500/10'
+                              : 'border-slate-700/50 bg-slate-900/30 hover:border-slate-600'
+                              }`}
                           >
                             <div className="text-2xl mb-1">👤</div>
                             <div className="text-white font-medium text-sm">User</div>
                             <div className="text-slate-400 text-xs mt-1">Developer</div>
                           </button>
-                          
+
                           <button
                             type="button"
                             onClick={() => handleRoleSelect('judge')}
-                            className={`p-4 rounded-lg border-2 transition-all ${
-                              selectedRole === 'judge'
-                                ? 'border-blue-500 bg-blue-500/10'
-                                : 'border-slate-700/50 bg-slate-900/30 hover:border-slate-600'
-                            }`}
+                            className={`p-4 rounded-lg border-2 transition-all ${selectedRole === 'judge'
+                              ? 'border-blue-500 bg-blue-500/10'
+                              : 'border-slate-700/50 bg-slate-900/30 hover:border-slate-600'
+                              }`}
                           >
                             <div className="text-2xl mb-1">⚖️</div>
                             <div className="text-white font-medium text-sm">Judge</div>
                             <div className="text-slate-400 text-xs mt-1">Hackathon</div>
                           </button>
-                          
+
                           <button
                             type="button"
                             onClick={() => handleRoleSelect('hr')}
-                            className={`p-4 rounded-lg border-2 transition-all ${
-                              selectedRole === 'hr'
-                                ? 'border-purple-500 bg-purple-500/10'
-                                : 'border-slate-700/50 bg-slate-900/30 hover:border-slate-600'
-                            }`}
+                            className={`p-4 rounded-lg border-2 transition-all ${selectedRole === 'hr'
+                              ? 'border-purple-500 bg-purple-500/10'
+                              : 'border-slate-700/50 bg-slate-900/30 hover:border-slate-600'
+                              }`}
                           >
                             <div className="text-2xl mb-1">💼</div>
                             <div className="text-white font-medium text-sm">HR</div>
@@ -409,7 +368,7 @@ export default function Auth() {
                               <option>Data Scientist</option>
                             </select>
                           </div>
-                          
+
                           <div>
                             <label className="block text-sm font-medium text-white mb-2">Skills (comma separated)</label>
                             <input
@@ -650,16 +609,15 @@ export default function Auth() {
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full font-medium py-2.5 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                  isSignUp && currentStep === 1 && (selectedRole === 'judge' || selectedRole === 'hr')
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-pink-600 hover:bg-pink-700 text-white'
-                }`}
+                className={`w-full font-medium py-2.5 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${isSignUp && currentStep === 1 && (selectedRole === 'judge' || selectedRole === 'hr')
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-pink-600 hover:bg-pink-700 text-white'
+                  }`}
               >
-                {loading ? "Processing..." : 
-                 isSignUp && currentStep === 1 && (selectedRole === 'judge' || selectedRole === 'hr') ? "Next: Professional Info →" :
-                 isSignUp ? "Create Account" : 
-                 "Sign In"}
+                {loading ? "Processing..." :
+                  isSignUp && currentStep === 1 && (selectedRole === 'judge' || selectedRole === 'hr') ? "Next: Professional Info →" :
+                    isSignUp ? "Create Account" :
+                      "Sign In"}
               </button>
             </form>
 

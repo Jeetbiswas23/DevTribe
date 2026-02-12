@@ -33,7 +33,7 @@ export default function Dashboard() {
   useEffect(() => {
     const handleNewNotification = (event) => {
       const notification = event.detail
-      
+
       // Add to notifications list
       const notifications = JSON.parse(localStorage.getItem('notifications') || '[]')
       notifications.unshift({
@@ -43,7 +43,7 @@ export default function Dashboard() {
         read: false
       })
       localStorage.setItem('notifications', JSON.stringify(notifications))
-      
+
       // Show alert popup
       const alert = { ...notification, id: Date.now() }
       setActiveAlerts(prev => [...prev, alert])
@@ -66,12 +66,12 @@ export default function Dashboard() {
       const user = JSON.parse(userData)
       setUserType(user.userType || 'user')
       setIsAuthed(true)
-      
+
       // Check for pending chat from navigation
       const pendingChat = localStorage.getItem('pendingChat')
       if (pendingChat) {
         console.log('📨 Found pending chat in localStorage:', pendingChat)
-        navigate('/dashboard/chat', { 
+        navigate('/dashboard/chat', {
           state: { pendingChatUser: JSON.parse(pendingChat) }
         })
         // Clear the pending chat
@@ -85,17 +85,17 @@ export default function Dashboard() {
     const handleOpenChat = (event) => {
       console.log('🎯 Dashboard received openChat event:', event.detail)
       // Navigate to chat with state
-      navigate('/dashboard/chat', { 
+      navigate('/dashboard/chat', {
         state: { pendingChatUser: event.detail }
       })
     }
-    
+
     const handleSwitchTab = (event) => {
       console.log('📑 Dashboard received switchTab event:', event.detail)
       // Navigate to the requested tab
       navigate(`/dashboard/${event.detail}`)
     }
-    
+
     window.addEventListener('openChat', handleOpenChat)
     window.addEventListener('switchTab', handleSwitchTab)
     return () => {
@@ -125,14 +125,20 @@ export default function Dashboard() {
         <div className="absolute top-20 right-1/4 w-96 h-96 bg-blue-500 rounded-full filter blur-3xl opacity-10" />
       </div>
 
-      <div className="relative z-10 flex flex-col">
-        <NavbarTop activeTab={activeTab} />
+      <div className="relative z-10 flex flex-col min-h-screen">
+        {/* Fixed Top Navbar */}
+        <div className="fixed top-0 left-0 right-0 z-50">
+          <NavbarTop activeTab={activeTab} />
+        </div>
 
-        <main className="flex flex-col md:flex-row">
-          <div className="flex-1 p-3 sm:p-4 md:p-6 pb-20 md:pb-6 overflow-y-auto">
-            {/* Render child routes here */}
-            <Outlet />
+        <main className="flex-1 flex pt-16">
+          {/* Main Content Area - Left aligned with right margin for sidebar */}
+          <div className="flex-1 px-4 py-6 md:mr-64 lg:mr-80 overflow-y-auto min-h-screen">
+            <div className="max-w-6xl">
+              <Outlet />
+            </div>
           </div>
+
           <SocialSidebar />
         </main>
       </div>
@@ -167,11 +173,10 @@ export default function Dashboard() {
               <button
                 key={item.id}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition ${
-                  activeTab === item.id
-                    ? "text-blue-400"
-                    : "text-neutral-400"
-                }`}
+                className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition ${activeTab === item.id
+                  ? "text-blue-400"
+                  : "text-neutral-400"
+                  }`}
               >
                 <span className="text-xl">{item.icon}</span>
                 <span className="text-xs font-medium">{item.label}</span>
