@@ -25,7 +25,31 @@ const PORT = process.env.PORT || 5000
 initSocket(server)
 
 // Middleware
-app.use(cors())
+// Explicit CORS configuration so preflight (OPTIONS) responses are handled
+// predictably in both dev (localhost) and deployed environments.
+const allowedOrigins = [
+  'http://localhost:5173',
+  process.env.FRONTEND_URL || 'https://devtribe-backend.onrender.com'
+]
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl)
+    if (!origin) return callback(null, true)
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      return callback(null, true)
+    }
+    return callback(new Error('Not allowed by CORS'))
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true,
+  optionsSuccessStatus: 204
+}
+
+app.use(cors(corsOptions))
+// Explicitly respond to preflight requests for all routes early
+app.options('*', cors(corsOptions))
+
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
