@@ -227,29 +227,85 @@ export default function UserProfile() {
                 >
                   Posts ({userPosts.length})
                 </button>
+                <button
+                  onClick={() => setActiveTab("teams")}
+                  className={`pb-3 px-1 font-medium transition ${activeTab === "teams"
+                    ? "text-blue-400 border-b-2 border-blue-400"
+                    : "text-neutral-400 hover:text-white"
+                    }`}
+                >
+                  Teams ({userInfo.teams?.length || 0})
+                </button>
               </div>
             </div>
 
-            {/* Posts */}
+            {/* Content */}
             <div className="space-y-4">
-              {userPosts.length === 0 ? (
-                <div className="text-center py-12 text-neutral-400">
-                  No posts yet
-                </div>
-              ) : (
-                userPosts.map((post) => (
-                  <div key={post.id} className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-4">
-                    <p className="text-white mb-2">{post.content}</p>
-                    {post.image && (
-                      <img src={post.image} alt="Post" className="rounded-lg mb-2 max-h-96 object-cover" />
-                    )}
-                    <div className="flex items-center gap-4 text-sm text-neutral-400">
-                      <span>{post.likes} likes</span>
-                      <span>{post.comments?.length || 0} comments</span>
-                      <span>{post.timestamp}</span>
-                    </div>
+              {activeTab === "posts" && (
+                userPosts.length === 0 ? (
+                  <div className="text-center py-12 text-neutral-400">
+                    No posts yet
                   </div>
-                ))
+                ) : (
+                  userPosts.map((post) => (
+                    <div key={post.id} className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-4">
+                      <p className="text-white mb-2">{post.content}</p>
+                      {post.image && (
+                        <img src={post.image} alt="Post" className="rounded-lg mb-2 max-h-96 object-cover" />
+                      )}
+                      <div className="flex items-center gap-4 text-sm text-neutral-400">
+                        <span>{post.likes} likes</span>
+                        <span>{post.comments?.length || 0} comments</span>
+                        <span>{post.timestamp}</span>
+                      </div>
+                    </div>
+                  ))
+                )
+              )}
+
+              {activeTab === "teams" && (
+                (!userInfo.teams || userInfo.teams.length === 0) ? (
+                  <div className="text-center py-12 text-neutral-400">
+                    No teams joined yet
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {userInfo.teams.map((team) => (
+                      <div key={team._id} className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-6">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="text-xl font-bold text-white mb-2">{team.name}</h3>
+                            <p className="text-neutral-400 mb-4">{team.description}</p>
+
+                            <div className="flex flex-wrap gap-2 mb-4">
+                              {team.tech && team.tech.map((tech, i) => (
+                                <span key={i} className="px-2 py-1 bg-blue-500/10 text-blue-400 text-xs rounded border border-blue-500/20">
+                                  {tech}
+                                </span>
+                              ))}
+                            </div>
+
+                            <div className="flex items-center gap-4 text-sm text-neutral-400">
+                              <span className="flex items-center gap-1">
+                                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                                {team.status}
+                              </span>
+                              <span>•</span>
+                              <span>{team.members?.length || 0} / {team.requiredMembers} Analysis</span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="text-xs text-neutral-500">
+                              Hackathon: {team.hackathonName}
+                            </div>
+                            {/* Only show join/details buttons if viewing another user's profile logic allows */}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
               )}
             </div>
           </div>
