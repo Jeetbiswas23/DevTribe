@@ -23,7 +23,8 @@ export const SocketProvider = ({ children }) => {
         if (user) {
             // Initialize socket connection
             // Extract origin from API URL (remove /api path)
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+            const apiUrl = import.meta.env.VITE_API_URL || 'https://devtribe-backend.onrender.com/api'
+            // console.log(apiUrl)
             const socketUrl = new URL(apiUrl).origin
 
             newSocket = io(socketUrl, {

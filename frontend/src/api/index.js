@@ -1,27 +1,16 @@
 import axios from 'axios'
 
 // Create axios instance
+// Default to the deployed backend URL if VITE_API_URL is not provided.
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://devtribe-backend.onrender.com/api',
+  withCredentials: true,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
   }
 })
-
-// Request interceptor - Add auth token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
+// Requests now use HttpOnly cookie for auth (server sets cookie). No token is stored in localStorage.
 
 // Response interceptor - Handle errors
 api.interceptors.response.use(
@@ -34,17 +23,16 @@ api.interceptors.response.use(
       const { status, data } = error.response
 
       if (status === 401) {
-        // Unauthorized - clear token and redirect to login
-        localStorage.removeItem('token')
-        window.location.href = '/auth'
+        // Unauthorized - no valid session; let the app handle it (avoid full page reload)
+        console.warn('Unauthorized (401) response from API')
       }
 
       console.error('API Error:', data.error || error.message)
       return Promise.reject(data)
     } else if (error.request) {
       // Request made but no response
-      console.error('Network Error:', error.message)
-      return Promise.reject({ error: 'Network error. Please check your connection.' })
+      console.error('Network Error: No response received', error)
+      return Promise.reject({ error: 'Network error: No response received' })
     } else {
       // Something else happened
       console.error('Error:', error.message)
@@ -57,6 +45,7 @@ api.interceptors.response.use(
 export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
+  logout: () => api.post('/auth/logout'),
   getMe: () => api.get('/auth/me')
 }
 
@@ -67,8 +56,7 @@ export const userAPI = {
   follow: (username) => api.post(`/users/${username}/follow`),
   unfollow: (username) => api.post(`/users/${username}/unfollow`),
   getFollowers: (username) => api.get(`/users/${username}/followers`),
-  getFollowing: (username) => api.get(`/users/${username}/following`),
-  getSuggestions: () => api.get('/users/suggestions')
+  getFollowing: (username) => api.get(`/users/${username}/following`)
 }
 
 export const teamAPI = {
@@ -78,7 +66,6 @@ export const teamAPI = {
   apply: (id, data) => api.post(`/teams/${id}/apply`, data),
   handleRequest: (teamId, userId, action) => api.post(`/teams/${teamId}/requests/${userId}/${action}`),
   removeMember: (teamId, userId) => api.delete(`/teams/${teamId}/members/${userId}`),
-  update: (id, data) => api.put(`/teams/${id}`, data),
   delete: (id) => api.delete(`/teams/${id}`)
 }
 
@@ -107,12 +94,6 @@ export const notificationAPI = {
   markAsRead: (id) => api.put(`/notifications/${id}/read`),
   markAllAsRead: () => api.put('/notifications/read-all'),
   delete: (id) => api.delete(`/notifications/${id}`)
-}
-
-export const messageAPI = {
-  getConversations: () => api.get('/messages/conversations'),
-  getMessages: (userId) => api.get(`/messages/${userId}`),
-  sendMessage: (userId, content) => api.post(`/messages/${userId}`, { content })
 }
 
 export default api

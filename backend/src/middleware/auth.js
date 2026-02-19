@@ -4,7 +4,8 @@ import User from '../models/User.js'
 export const auth = async (req, res, next) => {
   try {
     // Get token from header
-    const token = req.header('Authorization')?.replace('Bearer ', '')
+    // Prefer Authorization header, fall back to HttpOnly cookie named 'token'
+    const token = req.header('Authorization')?.replace('Bearer ', '') || req.cookies?.token
     
     if (!token) {
       return res.status(401).json({ error: 'No token provided, authorization denied' })
@@ -42,7 +43,7 @@ export const auth = async (req, res, next) => {
 
 export const optionalAuth = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '')
+    const token = req.header('Authorization')?.replace('Bearer ', '') || req.cookies?.token
     
     if (token) {
       const decoded = jwt.verify(token, process.env.JWT_SECRET)

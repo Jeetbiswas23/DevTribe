@@ -77,6 +77,7 @@ export default function Auth() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    // console.log(process.env.MONGODB_URI)
 
     // For login
     if (!isSignUp) {
@@ -617,7 +618,8 @@ export default function Auth() {
                 {loading ? "Processing..." :
                   isSignUp && currentStep === 1 && (selectedRole === 'judge' || selectedRole === 'hr') ? "Next: Professional Info →" :
                     isSignUp ? "Create Account" :
-                      "Sign In"}
+                      "Sign In"
+                }
               </button>
             </form>
 

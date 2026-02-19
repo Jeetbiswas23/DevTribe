@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { authAPI } from '../api'
 
 const AuthContext = createContext(null)
@@ -21,20 +22,19 @@ export const AuthProvider = ({ children }) => {
         checkAuth()
     }, [])
 
+    const navigate = useNavigate()
+
     const checkAuth = async () => {
         try {
-            const token = localStorage.getItem('token')
-            if (!token) {
-                setLoading(false)
-                return
-            }
-
+            // Try to get current user from the backend using HttpOnly cookie
             const response = await authAPI.getMe()
             setUser(response.data.user)
             setIsAuthenticated(true)
+            // Keep a copy of the non-sensitive user profile for components that read it
+            try { localStorage.setItem('user', JSON.stringify(response.data.user)) } catch (e) { /* ignore */ }
         } catch (error) {
             console.error('Auth check failed:', error)
-            localStorage.removeItem('token')
+            // No valid session
             setUser(null)
             setIsAuthenticated(false)
         } finally {
@@ -45,15 +45,15 @@ export const AuthProvider = ({ children }) => {
     const login = async (identifier, password) => {
         try {
             const response = await authAPI.login({ identifier, password })
-            const { token, user } = response.data
+            const { user, token } = response.data
 
-            // Store only token in localStorage
-            localStorage.setItem('token', token)
-
+            // Server sets HttpOnly cookie; frontend should not store token in localStorage
             setUser(user)
             setIsAuthenticated(true)
+            // Keep a copy of the non-sensitive user profile for components that read it
+            try { localStorage.setItem('user', JSON.stringify(user)) } catch (e) { /* ignore */ }
 
-            return { success: true, user }
+            return { success: true, user, token }
         } catch (error) {
             console.error('Login failed:', error)
             return {
@@ -66,15 +66,13 @@ export const AuthProvider = ({ children }) => {
     const register = async (userData) => {
         try {
             const response = await authAPI.register(userData)
-            const { token, user } = response.data
+            const { user, token } = response.data
 
-            // Store only token in localStorage
-            localStorage.setItem('token', token)
-
+            // Server sets HttpOnly cookie; frontend should not store token in localStorage
             setUser(user)
             setIsAuthenticated(true)
 
-            return { success: true, user }
+            return { success: true, user, token }
         } catch (error) {
             console.error('Registration failed:', error)
             return {
@@ -85,9 +83,17 @@ export const AuthProvider = ({ children }) => {
     }
 
     const logout = () => {
-        localStorage.removeItem('token')
+        try {
+            // Inform backend to clear the HttpOnly cookie
+            authAPI.logout()
+        } catch (e) {
+            console.warn('Logout request failed:', e)
+        }
         setUser(null)
         setIsAuthenticated(false)
+        try { localStorage.removeItem('user') } catch (e) { /* ignore */ }
+        // Navigate to auth page without full reload
+        navigate('/auth')
     }
 
     const value = {

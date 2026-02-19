@@ -1,6 +1,9 @@
 import express from 'express'
 import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const router = express.Router()
 
@@ -38,12 +41,22 @@ router.post('/register', async (req, res) => {
 
     await user.save()
 
-    // Generate token
+    // Generate token and set HttpOnly cookie for browser clients
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     )
+
+    // Cookie options: secure in production, SameSite none to allow cross-site cookies from your Vercel frontend
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'none',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    }
+
+    res.cookie('token', token, cookieOptions)
 
     res.status(201).json({
       message: 'User created successfully',
@@ -97,12 +110,21 @@ router.post('/login', async (req, res) => {
     user.lastActive = new Date()
     await user.save()
 
-    // Generate token
+    // Generate token and set HttpOnly cookie
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     )
+
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'none',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    }
+
+    res.cookie('token', token, cookieOptions)
 
     res.json({
       message: 'Login successful',
@@ -132,7 +154,8 @@ router.post('/login', async (req, res) => {
 // Get current user
 router.get('/me', async (req, res) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '')
+    // Accept token via Authorization header or HttpOnly cookie
+    const token = req.header('Authorization')?.replace('Bearer ', '') || req.cookies?.token
 
     if (!token) {
       return res.status(401).json({ error: 'No token provided' })
@@ -155,3 +178,18 @@ router.get('/me', async (req, res) => {
 })
 
 export default router
+
+// Logout route to clear the HttpOnly cookie
+router.post('/logout', (req, res) => {
+  try {
+    res.clearCookie('token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'none'
+    })
+    return res.json({ message: 'Logged out' })
+  } catch (error) {
+    console.error('Logout error:', error)
+    return res.status(500).json({ error: 'Logout failed' })
+  }
+})

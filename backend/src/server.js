@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import http from 'http'
+import cookieParser from 'cookie-parser'
 import { initSocket } from './socket.js'
 import connectDB from './config/database.js'
 import authRoutes from './routes/auth.js'
@@ -27,9 +28,13 @@ initSocket(server)
 // Middleware
 // Explicit CORS configuration so preflight (OPTIONS) responses are handled
 // predictably in both dev (localhost) and deployed environments.
+// Use process.env on the server (Node). Allowed origins are frontends that
+// will call this API (e.g., local dev at :5173 and any production frontend URL).
 const allowedOrigins = [
   'http://localhost:5173',
-  process.env.FRONTEND_URL || 'https://dev-tribe.vercel.app/'
+  process.env.FRONTEND_URL || 'http://localhost:5173',
+  'https://dev-tribe.vercel.app',
+  'https://devtribe-backend.onrender.com'
 ]
 const corsOptions = {
   origin: (origin, callback) => {
@@ -52,6 +57,8 @@ app.options('*', cors(corsOptions))
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+// Parse cookies for reading HttpOnly tokens
+app.use(cookieParser())
 
 // Health check
 app.get('/api/health', (req, res) => {
