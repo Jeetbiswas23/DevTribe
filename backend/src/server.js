@@ -1,93 +1,179 @@
-import express from 'express'
-import cors from 'cors'
-import dotenv from 'dotenv'
-import http from 'http'
-import cookieParser from 'cookie-parser'
-import { initSocket } from './socket.js'
-import connectDB from './config/database.js'
-import authRoutes from './routes/auth.js'
-import userRoutes from './routes/users.js'
-import postRoutes from './routes/posts.js'
-import teamRoutes from './routes/teams.js'
-import hackathonRoutes from './routes/hackathons.js'
-import messageRoutes from './routes/messages.js'
-import notificationRoutes from './routes/notifications.js'
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import http from 'http';
+import cookieParser from 'cookie-parser';
 
-dotenv.config()
+import { initSocket } from './socket.js';
+import connectDB from './config/database.js';
 
-// Connect to database
-connectDB()
+import authRoutes from './routes/auth.js';
+import userRoutes from './routes/users.js';
+import postRoutes from './routes/posts.js';
+import teamRoutes from './routes/teams.js';
+import hackathonRoutes from './routes/hackathons.js';
+import messageRoutes from './routes/messages.js';
+import notificationRoutes from './routes/notifications.js';
 
-const app = express()
-const server = http.createServer(app)
-const PORT = process.env.PORT || 5000
+dotenv.config();
 
-// Initialize Socket.io
-initSocket(server)
 
-// Middleware
-// Explicit CORS configuration so preflight (OPTIONS) responses are handled
-// predictably in both dev (localhost) and deployed environments.
-// Use process.env on the server (Node). Allowed origins are frontends that
-// will call this API (e.g., local dev at :5173 and any production frontend URL).
+// ✅ Connect Database
+connectDB();
+
+
+// ✅ Create express app
+const app = express();
+
+
+// ✅ Create HTTP server for Socket.IO
+const server = http.createServer(app);
+
+
+// ✅ PORT
+const PORT = process.env.PORT || 5000;
+
+
+
+// ✅ Initialize Socket.IO
+initSocket(server);
+
+
+
+// ✅ Allowed Frontend Origins ONLY
 const allowedOrigins = [
-  'http://localhost:5173',
-  process.env.FRONTEND_URL || 'http://localhost:5173',
-  'https://dev-tribe.vercel.app',
-  'https://devtribe-backend.onrender.com'
-]
+
+  "http://localhost:5173",
+
+  "https://dev-tribe.vercel.app"
+
+];
+
+
+
+// ✅ CORS Configuration
 const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl)
-    if (!origin) return callback(null, true)
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-      return callback(null, true)
+
+  origin: function (origin, callback) {
+
+    if (!origin) return callback(null, true);
+
+
+    if (allowedOrigins.includes(origin)) {
+
+      callback(null, true);
+
+    } else {
+
+      console.log("❌ CORS blocked:", origin);
+
+      callback(new Error("Not allowed by CORS"));
+
     }
-    return callback(new Error('Not allowed by CORS'))
+
   },
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+
   credentials: true,
-  optionsSuccessStatus: 204
-}
 
-app.use(cors(corsOptions))
-// Explicitly respond to preflight requests for all routes early
-app.options('*', cors(corsOptions))
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
-// Parse cookies for reading HttpOnly tokens
-app.use(cookieParser())
+  allowedHeaders: ["Content-Type", "Authorization"]
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'DevTribe API is running' })
-})
+};
 
-// API Routes
-app.use('/api/auth', authRoutes)
-app.use('/api/users', userRoutes)
-app.use('/api/posts', postRoutes)
-app.use('/api/teams', teamRoutes)
-app.use('/api/hackathons', hackathonRoutes)
-app.use('/api/messages', messageRoutes)
-app.use('/api/notifications', notificationRoutes)
 
-// Root route
-app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to DevTribe API' })
-})
 
-// Error handling middleware
+// ✅ Apply CORS
+app.use(cors(corsOptions));
+
+
+
+// ✅ Handle preflight requests
+app.options("*", cors(corsOptions));
+
+
+
+// ✅ Middleware
+app.use(express.json());
+
+app.use(express.urlencoded({ extended: true }));
+
+
+
+// ✅ Cookie Parser
+app.use(cookieParser());
+
+
+
+// ✅ Health Route
+app.get("/api/health", (req, res) => {
+
+  res.status(200).json({
+
+    status: "ok",
+
+    message: "DevTribe API is running"
+
+  });
+
+});
+
+
+
+// ✅ API Routes
+
+app.use("/api/auth", authRoutes);
+
+app.use("/api/users", userRoutes);
+
+app.use("/api/posts", postRoutes);
+
+app.use("/api/teams", teamRoutes);
+
+app.use("/api/hackathons", hackathonRoutes);
+
+app.use("/api/messages", messageRoutes);
+
+app.use("/api/notifications", notificationRoutes);
+
+
+
+// ✅ Root Route
+app.get("/", (req, res) => {
+
+  res.json({
+
+    message: "Welcome to DevTribe API"
+
+  });
+
+});
+
+
+
+// ✅ Global Error Handler
 app.use((err, req, res, next) => {
-  console.error(err.stack)
-  res.status(500).json({ error: 'Something went wrong!' })
-})
 
+  console.error("🔥 Error:", err.message);
+
+
+  res.status(500).json({
+
+    error: err.message || "Server Error"
+
+  });
+
+});
+
+
+
+// ✅ Start Server
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`)
-})
 
-export default app
+  console.log(`🚀 Server running on port ${PORT}`);
 
+});
+
+
+
+export default app;
