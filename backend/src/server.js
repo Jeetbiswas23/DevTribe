@@ -29,7 +29,7 @@ initSocket(server)
 // predictably in both dev (localhost) and deployed environments.
 const allowedOrigins = [
   'http://localhost:5173',
-  process.env.FRONTEND_URL || 'https://devtribe-backend.onrender.com'
+  process.env.FRONTEND_URL || 'https://dev-tribe.vercel.app/'
 ]
 const corsOptions = {
   origin: (origin, callback) => {
