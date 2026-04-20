@@ -2,11 +2,23 @@ import { Server } from 'socket.io'
 
 let io
 
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://dev-tribe.vercel.app'
+]
+
 export const initSocket = (server) => {
     io = new Server(server, {
         cors: {
-            origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-            methods: ['GET', 'POST']
+            origin: (origin, callback) => {
+                if (!origin || allowedOrigins.includes(origin)) {
+                    callback(null, true)
+                } else {
+                    callback(new Error('Socket.IO: Not allowed by CORS'))
+                }
+            },
+            methods: ['GET', 'POST'],
+            credentials: true
         }
     })
 

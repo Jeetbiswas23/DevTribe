@@ -18,6 +18,7 @@ import notificationRoutes from './routes/notifications.js';
 dotenv.config();
 
 
+
 // ✅ Connect Database
 connectDB();
 
@@ -45,7 +46,8 @@ const allowedOrigins = [
 
   "http://localhost:5173",
 
-  "https://dev-tribe.vercel.app"
+  "https://dev-tribe.vercel.app",
+  "https://dev-tribe.vercel.app/"
 
 ];
 
@@ -54,24 +56,7 @@ const allowedOrigins = [
 // ✅ CORS Configuration
 const corsOptions = {
 
-  origin: function (origin, callback) {
-
-    if (!origin) return callback(null, true);
-
-
-    if (allowedOrigins.includes(origin)) {
-
-      callback(null, true);
-
-    } else {
-
-      console.log("❌ CORS blocked:", origin);
-
-      callback(new Error("Not allowed by CORS"));
-
-    }
-
-  },
+  origin: allowedOrigins,
 
   credentials: true,
 

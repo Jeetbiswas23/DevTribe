@@ -7,6 +7,14 @@ dotenv.config()
 
 const router = express.Router()
 
+// Helper function for cookie options
+const getCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+})
+
 // Register
 router.post('/register', async (req, res) => {
   try {
@@ -48,13 +56,7 @@ router.post('/register', async (req, res) => {
       { expiresIn: '7d' }
     )
 
-    // Cookie options: secure in production, SameSite none to allow cross-site cookies from your Vercel frontend
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    }
+    const cookieOptions = getCookieOptions()
 
     res.cookie('token', token, cookieOptions)
 
@@ -117,12 +119,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     )
 
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    }
+    const cookieOptions = getCookieOptions()
 
     res.cookie('token', token, cookieOptions)
 
@@ -182,11 +179,7 @@ export default router
 // Logout route to clear the HttpOnly cookie
 router.post('/logout', (req, res) => {
   try {
-    res.clearCookie('token', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none'
-    })
+    res.clearCookie('token', getCookieOptions())
     return res.json({ message: 'Logged out' })
   } catch (error) {
     console.error('Logout error:', error)
